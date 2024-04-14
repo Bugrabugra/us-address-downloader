@@ -1,3 +1,6 @@
+import { contextBridge, ipcRenderer } from "electron";
+import { ElectronApi } from "../types";
+
 function domReady(
   condition: DocumentReadyState[] = ["complete", "interactive"]
 ) {
@@ -16,12 +19,20 @@ function domReady(
 
 const safeDOM = {
   append(parent: HTMLElement, child: HTMLElement) {
-    if (!Array.from(parent.children).find((e) => e === child)) {
+    if (
+      !Array.from(parent.children).find((e) => {
+        return e === child;
+      })
+    ) {
       return parent.appendChild(child);
     }
   },
   remove(parent: HTMLElement, child: HTMLElement) {
-    if (Array.from(parent.children).find((e) => e === child)) {
+    if (
+      Array.from(parent.children).find((e) => {
+        return e === child;
+      })
+    ) {
       return parent.removeChild(child);
     }
   }
@@ -91,4 +102,27 @@ window.onmessage = (ev) => {
   ev.data.payload === "removeLoading" && removeLoading();
 };
 
-setTimeout(removeLoading, 4999);
+setTimeout(removeLoading, 1000);
+
+const api: ElectronApi = {
+  getItems: ({ pathName, regex }) => {
+    return ipcRenderer.invoke("get-items", pathName, regex);
+  },
+  openSettingsMenu: (callback) => {
+    return ipcRenderer.on("open-settings-menu", callback);
+  },
+  setToStore: (object) => {
+    return ipcRenderer.send("set-to-store", object);
+  },
+  getFromStore: () => {
+    return ipcRenderer.invoke("get-from-store");
+  },
+  selectFolder: () => {
+    return ipcRenderer.invoke("select-folder");
+  },
+  testDbConnection: ({ dbValues }) => {
+    return ipcRenderer.invoke("test-db-connection", dbValues);
+  }
+};
+
+contextBridge.exposeInMainWorld("electronApi", api);

@@ -1,6 +1,11 @@
-import { app, BrowserWindow, shell, ipcMain } from "electron";
+import { app, BrowserWindow, dialog, ipcMain, Menu, shell } from "electron";
 import { release } from "node:os";
 import { join } from "node:path";
+import { Scraper } from "./utils/Xray";
+import { template } from "./utils/menu";
+import Store from "electron-store";
+import { Settings } from "../types/settings";
+import { Pool } from "pg";
 
 // The built directory structure
 //
@@ -12,11 +17,21 @@ import { join } from "node:path";
 // ├─┬ dist
 // │ └── index.html    > Electron-Renderer
 //
+
 process.env.DIST_ELECTRON = join(__dirname, "../");
 process.env.DIST = join(process.env.DIST_ELECTRON, "../dist");
 process.env.PUBLIC = process.env.VITE_DEV_SERVER_URL
   ? join(process.env.DIST_ELECTRON, "../public")
   : process.env.DIST;
+
+const store = new Store<Settings>({
+  defaults: {
+    host: "",
+    database: "",
+    port: 0,
+    downloadFolder: ""
+  }
+});
 
 // Disable GPU Acceleration for Windows 7
 if (release().startsWith("6.1")) app.disableHardwareAcceleration();
@@ -41,6 +56,8 @@ const url = process.env.VITE_DEV_SERVER_URL;
 const indexHtml = join(process.env.DIST, "index.html");
 
 async function createWindow() {
+  const scrapper = new Scraper();
+
   win = new BrowserWindow({
     title: "Main window",
     icon: join(process.env.PUBLIC, "favicon.ico"),
@@ -73,6 +90,47 @@ async function createWindow() {
     if (url.startsWith("https:")) shell.openExternal(url);
     return { action: "deny" };
   });
+
+  // const regex = /^([A-Z]).*\/$/;
+  // const regex = /^([A-Za-z]).*zip$/;
+  ipcMain.handle("get-items", (_, pathSegment, regex) => {
+    return scrapper.getItems({ pathSegment, regex });
+  });
+
+  ipcMain.on("set-to-store", (_, object) => {
+    store.set(object);
+  });
+
+  ipcMain.handle("select-folder", async () => {
+    // console.log(app.getPath("userData"));
+    const { canceled, filePaths } = await dialog.showOpenDialog(win, {
+      properties: ["openDirectory"]
+    });
+    if (canceled) {
+      return;
+    } else {
+      return filePaths[0];
+    }
+  });
+
+  ipcMain.handle("test-db-connection", async (_, dbValues) => {
+    const connectionString = `postgres://${dbValues.host}:${dbValues.port}/${dbValues.database}`;
+    const pool = new Pool({ connectionString });
+
+    try {
+      await pool.connect();
+      await pool.query("SELECT NOW()");
+      return { status: "success" };
+    } catch (error) {
+      dialog.showErrorBox("Error", error.message);
+      return { status: "error" };
+    } finally {
+      pool.end();
+    }
+  });
+
+  // TODO ts hatasini duzelt
+  Menu.setApplicationMenu(Menu.buildFromTemplate(template(win)));
 }
 
 app.whenReady().then(createWindow);

@@ -1,3 +1,4 @@
+var import_electron = require("electron");
 function domReady(condition = ["complete", "interactive"]) {
   return new Promise((resolve) => {
     if (condition.includes(document.readyState)) {
@@ -13,12 +14,16 @@ function domReady(condition = ["complete", "interactive"]) {
 }
 const safeDOM = {
   append(parent, child) {
-    if (!Array.from(parent.children).find((e) => e === child)) {
+    if (!Array.from(parent.children).find((e) => {
+      return e === child;
+    })) {
       return parent.appendChild(child);
     }
   },
   remove(parent, child) {
-    if (Array.from(parent.children).find((e) => e === child)) {
+    if (Array.from(parent.children).find((e) => {
+      return e === child;
+    })) {
       return parent.removeChild(child);
     }
   }
@@ -74,6 +79,27 @@ domReady().then(appendLoading);
 window.onmessage = (ev) => {
   ev.data.payload === "removeLoading" && removeLoading();
 };
-setTimeout(removeLoading, 4999);
+setTimeout(removeLoading, 1e3);
+const api = {
+  getItems: ({ pathName, regex }) => {
+    return import_electron.ipcRenderer.invoke("get-items", pathName, regex);
+  },
+  openSettingsMenu: (callback) => {
+    return import_electron.ipcRenderer.on("open-settings-menu", callback);
+  },
+  setToStore: (object) => {
+    return import_electron.ipcRenderer.send("set-to-store", object);
+  },
+  getFromStore: () => {
+    return import_electron.ipcRenderer.invoke("get-from-store");
+  },
+  selectFolder: () => {
+    return import_electron.ipcRenderer.invoke("select-folder");
+  },
+  testDbConnection: ({ dbValues }) => {
+    return import_electron.ipcRenderer.invoke("test-db-connection", dbValues);
+  }
+};
+import_electron.contextBridge.exposeInMainWorld("electronApi", api);
 
 //# sourceMappingURL=index.js.map

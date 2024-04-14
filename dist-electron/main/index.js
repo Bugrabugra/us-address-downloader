@@ -1,9 +1,43 @@
+var __create = Object.create;
+var __defProp = Object.defineProperty;
+var __getOwnPropDesc = Object.getOwnPropertyDescriptor;
+var __getOwnPropNames = Object.getOwnPropertyNames;
+var __getProtoOf = Object.getPrototypeOf;
+var __hasOwnProp = Object.prototype.hasOwnProperty;
+var __copyProps = (to, from, except, desc) => {
+  if (from && typeof from === "object" || typeof from === "function") {
+    for (let key of __getOwnPropNames(from))
+      if (!__hasOwnProp.call(to, key) && key !== except)
+        __defProp(to, key, { get: () => from[key], enumerable: !(desc = __getOwnPropDesc(from, key)) || desc.enumerable });
+  }
+  return to;
+};
+var __toESM = (mod, isNodeMode, target) => (target = mod != null ? __create(__getProtoOf(mod)) : {}, __copyProps(
+  // If the importer is in node compatibility mode or this is not an ESM
+  // file that has been converted to a CommonJS file using a Babel-
+  // compatible transform (i.e. "__esModule" has not been set), then set
+  // "default" to the CommonJS "module.exports" for node compatibility.
+  isNodeMode || !mod || !mod.__esModule ? __defProp(target, "default", { value: mod, enumerable: true }) : target,
+  mod
+));
 var import_electron = require("electron");
 var import_node_os = require("node:os");
 var import_node_path = require("node:path");
+var import_Xray = require("./utils/Xray");
+var import_menu = require("./utils/menu");
+var import_electron_store = __toESM(require("electron-store"));
+var import_pg = require("pg");
 process.env.DIST_ELECTRON = (0, import_node_path.join)(__dirname, "../");
 process.env.DIST = (0, import_node_path.join)(process.env.DIST_ELECTRON, "../dist");
 process.env.PUBLIC = process.env.VITE_DEV_SERVER_URL ? (0, import_node_path.join)(process.env.DIST_ELECTRON, "../public") : process.env.DIST;
+const store = new import_electron_store.default({
+  defaults: {
+    host: "",
+    database: "",
+    port: 0,
+    downloadFolder: ""
+  }
+});
 if ((0, import_node_os.release)().startsWith("6.1"))
   import_electron.app.disableHardwareAcceleration();
 if (process.platform === "win32")
@@ -17,6 +51,7 @@ const preload = (0, import_node_path.join)(__dirname, "../preload/index.js");
 const url = process.env.VITE_DEV_SERVER_URL;
 const indexHtml = (0, import_node_path.join)(process.env.DIST, "index.html");
 async function createWindow() {
+  const scrapper = new import_Xray.Scraper();
   win = new import_electron.BrowserWindow({
     title: "Main window",
     icon: (0, import_node_path.join)(process.env.PUBLIC, "favicon.ico"),
@@ -43,6 +78,37 @@ async function createWindow() {
       import_electron.shell.openExternal(url2);
     return { action: "deny" };
   });
+  import_electron.ipcMain.handle("get-items", (_, pathSegment, regex) => {
+    return scrapper.getItems({ pathSegment, regex });
+  });
+  import_electron.ipcMain.on("set-to-store", (_, object) => {
+    store.set(object);
+  });
+  import_electron.ipcMain.handle("select-folder", async () => {
+    const { canceled, filePaths } = await import_electron.dialog.showOpenDialog(win, {
+      properties: ["openDirectory"]
+    });
+    if (canceled) {
+      return;
+    } else {
+      return filePaths[0];
+    }
+  });
+  import_electron.ipcMain.handle("test-db-connection", async (_, dbValues) => {
+    const connectionString = `postgres://${dbValues.host}:${dbValues.port}/${dbValues.database}`;
+    const pool = new import_pg.Pool({ connectionString });
+    try {
+      await pool.connect();
+      await pool.query("SELECT NOW()");
+      return { status: "success" };
+    } catch (error) {
+      import_electron.dialog.showErrorBox("Error", error.message);
+      return { status: "error" };
+    } finally {
+      pool.end();
+    }
+  });
+  import_electron.Menu.setApplicationMenu(import_electron.Menu.buildFromTemplate((0, import_menu.template)(win)));
 }
 import_electron.app.whenReady().then(createWindow);
 import_electron.app.on("window-all-closed", () => {
