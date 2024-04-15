@@ -36,8 +36,6 @@ B
 src/store/index.ts,7/8/788f62f848ec0936ef56cb3abc11e629c69f787c
 P
  src/components/SettingsModal.tsx,1/2/125d4bdda9fdfa720817001d75a7bedae755e519
-E
-src/types/settings.ts,9/b/9bee161fac5fd995660573843baa4e1f8105c67e
 J
 electron/electron-env.d.ts,5/4/5483e739d7c6ef2df624dabe02739ecd0788be0c
 J
@@ -46,3 +44,23 @@ A
 src/vite-env.d.ts,4/a/4a1606df53288886cdd75df816f1e46b41e61eeb
 C
 electron/types.d.ts,b/f/bf6ca1d86dd201c6f3e382009ff1e402e0da0721
+O
+src/components/ZipFilesList.tsx,2/9/29a46086af49027bd03dcf0775805953ead0eda7
+H
+src/components/Layer.tsx,a/5/a505d73307b23be02d0bd9867fa2d32a65a67283
+L
+src/components/LayerItem.tsx,3/3/3393e269875255db7bfd60d2d471a623f68791f2
+<
+src/App.scss,b/c/bcada58bc91793cb9a75454562c527c157dc0cd9
+Q
+!src/components/LayersCollapse.tsx,e/0/e067f12ae945656801d800357107904c198e1d19
+O
+src/components/LayersSelect.tsx,d/0/d014e4da03decbd200eba6e405b037329b278ce0
+O
+electron/main/utils/download.ts,1/7/170f31db2992d67cc1e1efa1e0b21c1a8d4834a9
+O
+electron/main/contants/index.ts,d/c/dc78c79cbbb39380e9b11f4414a43b0217cbe1e1
+F
+src/types/downloads.ts,c/1/c1ae5ae1e66f2544f3d3788439049d0be7d8e62e
+Q
+!electron/main/utils/downloader.ts,f/1/f1b599d5cf16c9ea8279b10433081f05d04848df

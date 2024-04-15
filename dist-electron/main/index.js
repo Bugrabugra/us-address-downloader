@@ -27,6 +27,11 @@ var import_Xray = require("./utils/Xray");
 var import_menu = require("./utils/menu");
 var import_electron_store = __toESM(require("electron-store"));
 var import_pg = require("pg");
+var import_bcrypt = __toESM(require("bcrypt"));
+var import_contants = require("./contants");
+var import_electron_dl_manager = require("electron-dl-manager");
+var import_bytes = __toESM(require("bytes"));
+const manager = new import_electron_dl_manager.ElectronDownloadManager();
 process.env.DIST_ELECTRON = (0, import_node_path.join)(__dirname, "../");
 process.env.DIST = (0, import_node_path.join)(process.env.DIST_ELECTRON, "../dist");
 process.env.PUBLIC = process.env.VITE_DEV_SERVER_URL ? (0, import_node_path.join)(process.env.DIST_ELECTRON, "../public") : process.env.DIST;
@@ -82,7 +87,16 @@ async function createWindow() {
     return scrapper.getItems({ pathSegment, regex });
   });
   import_electron.ipcMain.on("set-to-store", (_, object) => {
-    store.set(object);
+    if (object.password) {
+      const salt = import_bcrypt.default.genSaltSync(10);
+      const hash = import_bcrypt.default.hashSync(object.password, salt);
+      store.set({
+        ...object,
+        password: hash
+      });
+    } else {
+      store.set(object);
+    }
   });
   import_electron.ipcMain.handle("select-folder", async () => {
     const { canceled, filePaths } = await import_electron.dialog.showOpenDialog(win, {
@@ -95,18 +109,57 @@ async function createWindow() {
     }
   });
   import_electron.ipcMain.handle("test-db-connection", async (_, dbValues) => {
-    const connectionString = `postgres://${dbValues.host}:${dbValues.port}/${dbValues.database}`;
+    const connectionString = dbValues.username && dbValues.password ? `postgres://${dbValues.username}:${dbValues.password}@${dbValues.host}:${dbValues.port}/${dbValues.database}` : `postgres://${dbValues.host}:${dbValues.port}/${dbValues.database}`;
     const pool = new import_pg.Pool({ connectionString });
     try {
       await pool.connect();
-      await pool.query("SELECT NOW()");
-      return { status: "success" };
+      const response = await pool.query(
+        "select * from pg_extension where extname='postgis'"
+      );
+      return {
+        isDatabaseVerified: Array.isArray(response.rows),
+        isPostGISInstalled: response.rows.length > 0,
+        error: null
+      };
     } catch (error) {
       import_electron.dialog.showErrorBox("Error", error.message);
-      return { status: "error" };
+      return {
+        isDatabaseVerified: false,
+        isPostGISInstalled: false,
+        error: error.message
+      };
     } finally {
       pool.end();
     }
+  });
+  import_electron.ipcMain.handle("download-zip-files", async (event, layerName, zipFiles) => {
+    await zipFiles.reduce(async (promise, zipFile) => {
+      await promise;
+      await manager.download({
+        window: win,
+        url: `${import_contants.baseUrl}${layerName}/${zipFile}`,
+        saveAsFilename: zipFile,
+        directory: store.get("downloadFolder"),
+        callbacks: {
+          onDownloadProgress: async ({ item, percentCompleted }) => {
+            win.webContents.send("download-progress", {
+              layerName,
+              zipFile,
+              percentCompleted,
+              // Get the number of bytes received so far
+              bytesReceived: (0, import_bytes.default)(item.getReceivedBytes(), { unit: "mb" })
+            });
+          },
+          onDownloadCompleted: async () => {
+            win.webContents.send("download-completed", {
+              zipFile
+              // Get the path to the file that was downloaded
+              // filePath: item.getSavePath()
+            });
+          }
+        }
+      });
+    }, Promise.resolve());
   });
   import_electron.Menu.setApplicationMenu(import_electron.Menu.buildFromTemplate((0, import_menu.template)(win)));
 }

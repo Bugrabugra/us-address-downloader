@@ -22,6 +22,8 @@
   },
   "devDependencies": {
     "@playwright/test": "^1.43.0",
+    "@types/bcrypt": "^5.0.2",
+    "@types/bytes": "^3.1.4",
     "@types/pg": "^8.11.5",
     "@types/react": "^18.2.75",
     "@types/react-dom": "^18.2.24",
@@ -49,8 +51,12 @@
   "dependencies": {
     "@ant-design/icons": "^5.3.6",
     "antd": "^5.16.1",
+    "bcrypt": "^5.1.1",
+    "bytes": "^3.1.2",
     "cheerio": "^1.0.0-rc.12",
     "electron-default-menu": "^1.0.2",
+    "electron-dl": "^3.5.2",
+    "electron-dl-manager": "^3.0.0",
     "electron-store": "^8.2.0",
     "pg": "^8.11.5",
     "x-ray": "^2.3.4",

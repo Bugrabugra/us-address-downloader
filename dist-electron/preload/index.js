@@ -98,6 +98,22 @@ const api = {
   },
   testDbConnection: ({ dbValues }) => {
     return import_electron.ipcRenderer.invoke("test-db-connection", dbValues);
+  },
+  downloadZipFiles: ({
+    layerName,
+    zipFiles
+  }) => {
+    return import_electron.ipcRenderer.invoke("download-zip-files", layerName, zipFiles);
+  },
+  downloadProgress: (callback) => {
+    return import_electron.ipcRenderer.on("download-progress", (_event, value) => {
+      return callback(value);
+    });
+  },
+  downloadCompleted: (callback) => {
+    return import_electron.ipcRenderer.on("download-completed", (_event, value) => {
+      return callback(value);
+    });
   }
 };
 import_electron.contextBridge.exposeInMainWorld("electronApi", api);

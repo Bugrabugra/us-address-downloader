@@ -1,8 +1,9 @@
 import Xray from "x-ray";
+import { baseUrl } from "../contants";
 
 export class Scraper {
-  static readonly baseUrl =
-    "https://www2.census.gov/geo/tiger/TIGER_RD18/LAYER/";
+  static readonly baseUrl = baseUrl;
+
   private xRay = Xray();
 
   async getItems({

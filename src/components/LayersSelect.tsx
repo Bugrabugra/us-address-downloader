@@ -1,11 +1,15 @@
 import React, { useEffect, useState } from "react";
 import { Select } from "antd";
-import { DefaultOptionType } from "rc-select/lib/Select";
 import { useAppStore } from "@/store";
+import { DefaultOptionType } from "rc-select/lib/Select";
 
-const LayersList = () => {
-  const { addLayer, layers } = useAppStore();
+const LayersSelect = () => {
+  const { addLayer } = useAppStore();
   const [options, setOptions] = useState<DefaultOptionType[]>([]);
+
+  useEffect(() => {
+    getLayerNames();
+  }, []);
 
   const getLayerNames = async () => {
     const items = await window.electronApi.getItems({
@@ -20,21 +24,18 @@ const LayersList = () => {
     setOptions(optionsFromItems);
   };
 
-  useEffect(() => {
-    getLayerNames();
-  }, []);
-
   const handleClickItem = (value: string) => {
     addLayer(value);
   };
 
   return (
     <Select
+      placeholder="Please select a layer"
       onChange={handleClickItem}
       options={options}
-      style={{ width: 200 }}
+      style={{ width: "100%" }}
     />
   );
 };
 
-export default LayersList;
+export default LayersSelect;

@@ -122,6 +122,25 @@ const api: ElectronApi = {
   },
   testDbConnection: ({ dbValues }) => {
     return ipcRenderer.invoke("test-db-connection", dbValues);
+  },
+  downloadZipFiles: ({
+    layerName,
+    zipFiles
+  }: {
+    layerName: string;
+    zipFiles: string[];
+  }) => {
+    return ipcRenderer.invoke("download-zip-files", layerName, zipFiles);
+  },
+  downloadProgress: (callback) => {
+    return ipcRenderer.on("download-progress", (_event, value) => {
+      return callback(value);
+    });
+  },
+  downloadCompleted: (callback) => {
+    return ipcRenderer.on("download-completed", (_event, value) => {
+      return callback(value);
+    });
   }
 };
 

@@ -1,7 +1,8 @@
 import "./App.scss";
-import LayersList from "@/components/LayersList";
+import LayersCollapse from "@/components/LayersCollapse";
 import { useEffect, useState } from "react";
 import SettingsModal from "@/components/SettingsModal";
+import LayersSelect from "@/components/LayersSelect";
 
 function App() {
   const [isModalVisible, setIsModalVisible] = useState(false);
@@ -22,7 +23,12 @@ function App() {
         isModalVisible={isModalVisible}
         setIsModalVisible={setIsModalVisible}
       />
-      <LayersList />
+
+      <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+        <LayersSelect />
+
+        <LayersCollapse />
+      </div>
     </div>
   );
 }

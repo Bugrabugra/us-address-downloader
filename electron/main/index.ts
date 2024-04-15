@@ -6,6 +6,12 @@ import { template } from "./utils/menu";
 import Store from "electron-store";
 import { Settings } from "../types/settings";
 import { Pool } from "pg";
+import bcrypt from "bcrypt";
+import { baseUrl } from "./contants";
+import { ElectronDownloadManager } from "electron-dl-manager";
+import bytes from "bytes";
+
+const manager = new ElectronDownloadManager();
 
 // The built directory structure
 //
@@ -98,7 +104,16 @@ async function createWindow() {
   });
 
   ipcMain.on("set-to-store", (_, object) => {
-    store.set(object);
+    if (object.password) {
+      const salt = bcrypt.genSaltSync(10);
+      const hash = bcrypt.hashSync(object.password, salt);
+      store.set({
+        ...object,
+        password: hash
+      });
+    } else {
+      store.set(object);
+    }
   });
 
   ipcMain.handle("select-folder", async () => {
@@ -114,19 +129,65 @@ async function createWindow() {
   });
 
   ipcMain.handle("test-db-connection", async (_, dbValues) => {
-    const connectionString = `postgres://${dbValues.host}:${dbValues.port}/${dbValues.database}`;
+    const connectionString =
+      dbValues.username && dbValues.password
+        ? `postgres://${dbValues.username}:${dbValues.password}@${dbValues.host}:${dbValues.port}/${dbValues.database}`
+        : `postgres://${dbValues.host}:${dbValues.port}/${dbValues.database}`;
     const pool = new Pool({ connectionString });
 
     try {
       await pool.connect();
-      await pool.query("SELECT NOW()");
-      return { status: "success" };
+      const response = await pool.query(
+        "select * from pg_extension where extname='postgis'"
+      );
+      return {
+        isDatabaseVerified: Array.isArray(response.rows),
+        isPostGISInstalled: response.rows.length > 0,
+        error: null
+      };
     } catch (error) {
       dialog.showErrorBox("Error", error.message);
-      return { status: "error" };
+      return {
+        isDatabaseVerified: false,
+        isPostGISInstalled: false,
+        error: error.message
+      };
     } finally {
       pool.end();
     }
+  });
+
+  ipcMain.handle("download-zip-files", async (event, layerName, zipFiles) => {
+    await zipFiles.reduce(async (promise, zipFile) => {
+      await promise;
+
+      await manager.download({
+        window: win,
+        url: `${baseUrl}${layerName}/${zipFile}`,
+        saveAsFilename: zipFile,
+        directory: store.get("downloadFolder"),
+        callbacks: {
+          onDownloadProgress: async ({ item, percentCompleted }) => {
+            // Send the download progress back to the renderer
+            win.webContents.send("download-progress", {
+              layerName,
+              zipFile,
+              percentCompleted,
+              // Get the number of bytes received so far
+              bytesReceived: bytes(item.getReceivedBytes(), { unit: "mb" })
+            });
+          },
+          onDownloadCompleted: async () => {
+            // Send the download completion back to the renderer
+            win.webContents.send("download-completed", {
+              zipFile
+              // Get the path to the file that was downloaded
+              // filePath: item.getSavePath()
+            });
+          }
+        }
+      });
+    }, Promise.resolve());
   });
 
   // TODO ts hatasini duzelt
